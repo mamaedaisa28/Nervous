@@ -1,0 +1,878 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Maré — acompanhamento diário</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas: #ECEFE6;
+    --canvas-soft: #F5F6F0;
+    --card: #FFFFFF;
+    --ink: #24322E;
+    --ink-soft: #55635C;
+    --moss: #4F6B55;
+    --moss-deep: #384B3D;
+    --clay: #A85C3F;
+    --clay-soft: #E9D3C6;
+    --gold: #B8973F;
+    --line: #D9DCCF;
+    --shadow: 0 1px 2px rgba(36,50,46,0.04), 0 8px 24px rgba(36,50,46,0.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--canvas);
+    color:var(--ink);
+    font-family:'Public Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .app{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    background:var(--canvas-soft);
+    display:flex;
+    flex-direction:column;
+    position:relative;
+  }
+  header.top{
+    padding:28px 24px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--moss);
+  }
+  h1.wordmark{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size:28px;
+    margin:2px 0 0;
+    color:var(--ink);
+  }
+  nav.tabs{
+    display:flex;
+    padding:0 24px;
+    gap:4px;
+    border-bottom:1px solid var(--line);
+  }
+  nav.tabs button{
+    flex:1;
+    background:none;
+    border:none;
+    padding:12px 4px;
+    font-family:'Public Sans', sans-serif;
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink-soft);
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+    transition:color .15s ease, border-color .15s ease;
+  }
+  nav.tabs button.active{
+    color:var(--moss-deep);
+    border-bottom-color:var(--moss);
+  }
+  main{
+    flex:1;
+    padding:20px 20px 100px;
+  }
+  .card{
+    background:var(--card);
+    border-radius:16px;
+    border:1px solid var(--line);
+    box-shadow:var(--shadow);
+    padding:20px;
+    margin-bottom:16px;
+  }
+  .card h2{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size:18px;
+    margin:0 0 4px;
+  }
+  .card p.sub{
+    margin:0 0 16px;
+    font-size:13px;
+    color:var(--ink-soft);
+    line-height:1.5;
+  }
+
+  /* Breathing orb */
+  .orb-wrap{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:12px 0 4px;
+  }
+  .orb-stage{
+    width:180px;
+    height:180px;
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .ring{
+    position:absolute;
+    border-radius:50%;
+    border:1px solid var(--moss);
+    opacity:0.18;
+  }
+  .ring.r1{width:100%;height:100%;}
+  .ring.r2{width:75%;height:75%;}
+  .orb{
+    width:52%;
+    height:52%;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #7C9A80, var(--moss) 60%, var(--moss-deep) 100%);
+    animation:breathe 12s ease-in-out infinite;
+    box-shadow:0 0 40px rgba(79,107,85,0.35);
+  }
+  @keyframes breathe{
+    0%{transform:scale(0.72);}
+    33%{transform:scale(1);}
+    66%{transform:scale(1);}
+    100%{transform:scale(0.72);}
+  }
+  .orb-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.06em;
+    color:var(--ink-soft);
+    margin-top:10px;
+    animation:label-cycle 12s linear infinite;
+  }
+  @keyframes label-cycle{
+    0%{content:'';}
+  }
+  .orb-btn{
+    margin-top:14px;
+    background:var(--moss);
+    color:#fff;
+    border:none;
+    border-radius:999px;
+    padding:10px 20px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .orb-btn.stop{background:var(--clay);}
+
+  /* Checklist */
+  .phase-tag{
+    display:inline-block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    background:var(--clay-soft);
+    color:var(--clay);
+    padding:3px 9px;
+    border-radius:999px;
+    margin-bottom:10px;
+  }
+  ul.checklist{
+    list-style:none;
+    margin:0;
+    padding:0;
+  }
+  ul.checklist li{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    padding:11px 0;
+    border-bottom:1px solid var(--line);
+  }
+  ul.checklist li:last-child{border-bottom:none;}
+  .check{
+    flex:none;
+    width:22px;
+    height:22px;
+    border-radius:6px;
+    border:1.5px solid var(--ink-soft);
+    margin-top:1px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#fff;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .check.done{
+    background:var(--moss);
+    border-color:var(--moss);
+  }
+  .check.done::after{
+    content:'✓';
+    color:#fff;
+    font-size:13px;
+  }
+  .item-text{
+    font-size:14px;
+    line-height:1.45;
+    padding-top:1px;
+  }
+  .item-text.done{
+    color:var(--ink-soft);
+    text-decoration:line-through;
+    text-decoration-color:var(--line);
+  }
+  .progress-line{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-top:14px;
+  }
+  .bar{
+    flex:1;
+    height:6px;
+    background:var(--line);
+    border-radius:99px;
+    overflow:hidden;
+  }
+  .bar-fill{
+    height:100%;
+    background:var(--moss);
+    border-radius:99px;
+    transition:width .3s ease;
+  }
+  .bar-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+
+  /* Journal */
+  textarea{
+    width:100%;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px;
+    font-family:'Public Sans', sans-serif;
+    font-size:14px;
+    resize:vertical;
+    min-height:80px;
+    background:var(--canvas-soft);
+    color:var(--ink);
+  }
+  label.field-label{
+    display:block;
+    font-size:12px;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin:14px 0 6px;
+  }
+  input[type=range]{
+    width:100%;
+    accent-color:var(--clay);
+  }
+  .intensity-row{
+    display:flex;
+    justify-content:space-between;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+  }
+  .save-btn{
+    margin-top:16px;
+    width:100%;
+    background:var(--moss-deep);
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:12px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .save-btn:active{opacity:0.85;}
+  .entry{
+    border-top:1px solid var(--line);
+    padding-top:12px;
+    margin-top:12px;
+  }
+  .entry-date{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--moss);
+  }
+  .entry-mood{
+    font-size:13px;
+    font-weight:600;
+    margin:2px 0 4px;
+  }
+  .entry-note{
+    font-size:13px;
+    color:var(--ink-soft);
+    line-height:1.5;
+  }
+
+  /* Plan (accordion) */
+  .month-block{
+    border:1px solid var(--line);
+    border-radius:12px;
+    margin-bottom:10px;
+    overflow:hidden;
+  }
+  .month-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:14px 16px;
+    cursor:pointer;
+    background:var(--canvas-soft);
+  }
+  .month-head h3{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size:15px;
+    margin:0;
+  }
+  .month-head span.m-eyebrow{
+    display:block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    color:var(--ink-soft);
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+  }
+  .chev{
+    color:var(--ink-soft);
+    transition:transform .2s ease;
+    font-size:13px;
+  }
+  .month-body{
+    max-height:0;
+    overflow:hidden;
+    transition:max-height .25s ease;
+    background:#fff;
+  }
+  .month-body-inner{
+    padding:4px 16px 16px;
+  }
+  .month-body-inner ul{
+    margin:0;
+    padding-left:18px;
+    font-size:13.5px;
+    line-height:1.7;
+    color:var(--ink);
+  }
+  .note-box{
+    background:var(--clay-soft);
+    border-radius:10px;
+    padding:12px 14px;
+    font-size:12.5px;
+    color:#6B3B27;
+    line-height:1.5;
+    margin-top:10px;
+  }
+
+  /* Progress / heatmap */
+  .stat-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .stat{
+    flex:1;
+    background:var(--canvas-soft);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px;
+    text-align:center;
+  }
+  .stat .num{
+    font-family:'Fraunces', serif;
+    font-size:24px;
+    color:var(--moss-deep);
+    display:block;
+  }
+  .stat .lbl{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:var(--ink-soft);
+  }
+  .heatmap{
+    display:grid;
+    grid-template-columns:repeat(15, 1fr);
+    gap:4px;
+  }
+  .cell{
+    aspect-ratio:1;
+    border-radius:3px;
+    background:var(--line);
+  }
+  .cell.l1{background:#CBDBC9;}
+  .cell.l2{background:#9EBB9C;}
+  .cell.l3{background:var(--moss);}
+  .cell.today{outline:1.5px solid var(--clay); outline-offset:1px;}
+
+  .loading{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:13px;
+    padding:40px 0;
+  }
+  ::selection{background:var(--clay-soft);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <span class="eyebrow" id="phase-eyebrow">Carregando…</span>
+    <h1 class="wordmark">Maré</h1>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="hoje">Hoje</button>
+    <button class="tab-btn" data-tab="diario">Diário</button>
+    <button class="tab-btn" data-tab="plano">Plano</button>
+    <button class="tab-btn" data-tab="progresso">Progresso</button>
+  </nav>
+
+  <main>
+
+    <!-- HOJE -->
+    <section id="tab-hoje" class="tab-panel">
+      <div class="card">
+        <div class="orb-wrap">
+          <div class="orb-stage">
+            <div class="ring r1"></div>
+            <div class="ring r2"></div>
+            <div class="orb" id="orb" style="animation-play-state: paused;"></div>
+          </div>
+          <div class="orb-label" id="orb-label">toque para respirar · 4s inspira / 8s solta</div>
+          <button class="orb-btn" id="orb-btn">Começar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="phase-tag" id="today-phase-tag">—</span>
+        <h2>Checklist de hoje</h2>
+        <p class="sub" id="today-sub">—</p>
+        <ul class="checklist" id="today-checklist"></ul>
+        <div class="progress-line">
+          <div class="bar"><div class="bar-fill" id="today-bar" style="width:0%"></div></div>
+          <span class="bar-label" id="today-count">0/0</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- DIÁRIO -->
+    <section id="tab-diario" class="tab-panel" style="display:none;">
+      <div class="card">
+        <h2>Diário de hoje</h2>
+        <p class="sub">Três linhas bastam. O que o corpo sentiu, quando, e o quanto.</p>
+
+        <label class="field-label">Como você está</label>
+        <textarea id="journal-note" placeholder="O que aconteceu, o que senti no corpo..."></textarea>
+
+        <label class="field-label">Intensidade (0 calmo — 10 colapso)</label>
+        <input type="range" id="journal-intensity" min="0" max="10" value="3">
+        <div class="intensity-row"><span>0</span><span id="intensity-val">3</span><span>10</span></div>
+
+        <button class="save-btn" id="journal-save">Salvar registro de hoje</button>
+      </div>
+
+      <div class="card">
+        <h2>Últimos registros</h2>
+        <p class="sub">Seus registros mais recentes aparecem aqui.</p>
+        <div id="journal-list"><p class="sub">Ainda não há registros.</p></div>
+      </div>
+    </section>
+
+    <!-- PLANO -->
+    <section id="tab-plano" class="tab-panel" style="display:none;">
+      <div id="plan-list"></div>
+    </section>
+
+    <!-- PROGRESSO -->
+    <section id="tab-progresso" class="tab-panel" style="display:none;">
+      <div class="card">
+        <h2>Visão geral</h2>
+        <div class="stat-row">
+          <div class="stat"><span class="num" id="stat-streak">0</span><span class="lbl">sequência</span></div>
+          <div class="stat"><span class="num" id="stat-days">0</span><span class="lbl">dias ativos</span></div>
+          <div class="stat"><span class="num" id="stat-month">1</span><span class="lbl">mês do plano</span></div>
+        </div>
+        <p class="sub">Cada quadrado é um dia. Mais escuro = mais itens concluídos.</p>
+        <div class="heatmap" id="heatmap"></div>
+      </div>
+      <div class="card">
+        <h2>Reiniciar</h2>
+        <p class="sub">Isso apaga o início do seu plano (não apaga diário ou checklists já salvos).</p>
+        <button class="save-btn" style="background:var(--clay)" id="reset-start">Reiniciar data de início</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+(function(){
+
+  // ---------- Plan data ----------
+  const PLAN = [
+    {
+      month: 1, phase: "Regular o corpo",
+      sub: "A base: acalmar o sistema antes de mexer em qualquer ferida.",
+      items: [
+        "Respiração 4-8 pela manhã (5 min)",
+        "Mão no peito + \"isso é ativação, não perigo\" quando sentir aperto",
+        "Diário noturno: o que senti, quando, intensidade",
+        "20-30 min de caminhada ou exercício"
+      ],
+      note: null
+    },
+    {
+      month: 2, phase: "Regular o corpo",
+      sub: "Mesma base, agora em repetição — é o volume de uso que cria o hábito novo.",
+      items: [
+        "Respiração 4-8 pela manhã (5 min)",
+        "Mão no peito + \"isso é ativação, não perigo\" quando sentir aperto",
+        "Diário noturno: o que senti, quando, intensidade",
+        "20-30 min de caminhada ou exercício"
+      ],
+      note: null
+    },
+    {
+      month: 3, phase: "Mapear o padrão",
+      sub: "Sem reviver a memória com força — só observar o que vem antes do gatilho.",
+      items: [
+        "Tudo do mês 1-2",
+        "Notar o que aconteceu 5 min antes do gatilho (não só o pico)",
+        "Escrever a ferida em 3ª pessoa 2x na semana (\"ela sentiu...\")",
+        "Frase diária: \"eu falaria isso pra quem eu amo?\""
+      ],
+      note: "Escrever em 3ª pessoa cria distância emocional da cena — reduz a intensidade sem reviver a memória de forma imersiva."
+    },
+    {
+      month: 4, phase: "Reestruturar crenças",
+      sub: "Questionar o pensamento automático que aparece no colapso.",
+      items: [
+        "Tudo do mês anterior",
+        "Identificar o pensamento automático no colapso (ex: \"vou ser abandonada\")",
+        "Perguntar: isso é fato ou interpretação? Qual outra explicação existe?",
+        "Registrar 1 coisa que você fez bem hoje"
+      ],
+      note: null
+    },
+    {
+      month: 5, phase: "Exposição gradual",
+      sub: "Desconforto pequeno e controlado — nunca o pico.",
+      items: [
+        "Tudo do mês anterior",
+        "Tolerar 1 situação de desconforto leve por dia (ex: não checar, não buscar aprovação)",
+        "Aumentar a dificuldade só quando a anterior ficar tranquila",
+        "1x/semana: compartilhar um sentimento difícil com alguém de confiança"
+      ],
+      note: null
+    },
+    {
+      month: 6, phase: "Consolidar",
+      sub: "Menos exercício de crise, mais rotina permanente.",
+      items: [
+        "Revisar o diário da semana",
+        "Reduzir exercícios de crise conforme sentir necessidade menor",
+        "Manter só o que virou hábito natural",
+        "Reler o diário do mês 1 e comparar com hoje"
+      ],
+      note: null
+    }
+  ];
+
+  // ---------- Storage helpers ----------
+  async function storeGet(key){
+    try{
+      const r = await window.storage.get(key, false);
+      return r ? JSON.parse(r.value) : null;
+    }catch(e){ return null; }
+  }
+  async function storeSet(key, value){
+    try{
+      await window.storage.set(key, JSON.stringify(value), false);
+      return true;
+    }catch(e){ return false; }
+  }
+  async function storeDelete(key){
+    try{ await window.storage.delete(key, false); }catch(e){}
+  }
+
+  function todayKey(d){
+    d = d || new Date();
+    return d.toISOString().slice(0,10);
+  }
+
+  // ---------- Program month calculation ----------
+  let startDate = null;
+  async function ensureStartDate(){
+    let s = await storeGet('program:start');
+    if(!s){
+      s = todayKey();
+      await storeSet('program:start', s);
+    }
+    startDate = s;
+    return s;
+  }
+  function currentMonthIndex(){
+    const start = new Date(startDate + 'T00:00:00');
+    const now = new Date();
+    let months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+    if(now.getDate() < start.getDate()) months -= 1;
+    if(months < 0) months = 0;
+    if(months > 5) months = 5;
+    return months; // 0-indexed, maps to PLAN[months]
+  }
+
+  // ---------- Tabs ----------
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  tabButtons.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      tabButtons.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.tab-panel').forEach(p=>p.style.display='none');
+      document.getElementById('tab-' + btn.dataset.tab).style.display='block';
+    });
+  });
+
+  // ---------- Breathing orb ----------
+  const orb = document.getElementById('orb');
+  const orbBtn = document.getElementById('orb-btn');
+  const orbLabel = document.getElementById('orb-label');
+  let breathing = false;
+  let labelInterval = null;
+  orbBtn.addEventListener('click', ()=>{
+    breathing = !breathing;
+    if(breathing){
+      orb.style.animationPlayState = 'running';
+      orbBtn.textContent = 'Parar';
+      orbBtn.classList.add('stop');
+      let phase = 0;
+      const cycle = ()=>{
+        orbLabel.textContent = phase % 2 === 0 ? 'inspire… (4s)' : 'solte… (8s)';
+        phase++;
+      };
+      cycle();
+      labelInterval = setInterval(cycle, phase % 2 === 0 ? 4000 : 8000);
+      // simpler: alternate on fixed 4/8 schedule
+      clearInterval(labelInterval);
+      let t = 0;
+      labelInterval = setInterval(()=>{
+        t = (t + 1) % 3; // 0:inspire(4s) 1,2: solte(8s worth of 4s ticks)
+        orbLabel.textContent = t === 0 ? 'inspire…' : 'solte…';
+      }, 4000);
+    } else {
+      orb.style.animationPlayState = 'paused';
+      orbBtn.textContent = 'Começar';
+      orbBtn.classList.remove('stop');
+      orbLabel.textContent = 'toque para respirar · 4s inspira / 8s solta';
+      clearInterval(labelInterval);
+    }
+  });
+
+  // ---------- Today checklist ----------
+  async function renderToday(){
+    const mIdx = currentMonthIndex();
+    const monthData = PLAN[mIdx];
+    document.getElementById('phase-eyebrow').textContent = 'Mês ' + monthData.month + ' de 6 · ' + monthData.phase;
+    document.getElementById('today-phase-tag').textContent = 'Mês ' + monthData.month;
+    document.getElementById('today-sub').textContent = monthData.sub;
+
+    const key = 'checklist:' + todayKey();
+    let state = await storeGet(key) || {};
+
+    const ul = document.getElementById('today-checklist');
+    ul.innerHTML = '';
+    monthData.items.forEach((text, i)=>{
+      const li = document.createElement('li');
+      const done = !!state[i];
+      li.innerHTML = '<div class="check ' + (done?'done':'') + '" data-i="'+i+'"></div>' +
+                      '<div class="item-text ' + (done?'done':'') + '">'+text+'</div>';
+      ul.appendChild(li);
+    });
+
+    updateTodayBar(state, monthData.items.length);
+
+    ul.querySelectorAll('.check').forEach(chk=>{
+      chk.addEventListener('click', async ()=>{
+        const i = chk.dataset.i;
+        state[i] = !state[i];
+        await storeSet(key, state);
+        renderToday();
+        renderProgress();
+      });
+    });
+  }
+  function updateTodayBar(state, total){
+    const done = Object.values(state).filter(Boolean).length;
+    const pct = total ? Math.round((done/total)*100) : 0;
+    document.getElementById('today-bar').style.width = pct + '%';
+    document.getElementById('today-count').textContent = done + '/' + total;
+  }
+
+  // ---------- Journal ----------
+  const intensitySlider = document.getElementById('journal-intensity');
+  const intensityVal = document.getElementById('intensity-val');
+  intensitySlider.addEventListener('input', ()=>{ intensityVal.textContent = intensitySlider.value; });
+
+  document.getElementById('journal-save').addEventListener('click', async ()=>{
+    const note = document.getElementById('journal-note').value.trim();
+    if(!note) return;
+    const entry = { date: todayKey(), note, intensity: intensitySlider.value, ts: Date.now() };
+    await storeSet('journal:' + todayKey(), entry);
+    document.getElementById('journal-note').value = '';
+    renderJournalList();
+    renderProgress();
+  });
+
+  async function renderJournalList(){
+    const list = await storeGet('journal:index') || [];
+    // fallback: we don't track an index; instead scan last 14 days
+    const container = document.getElementById('journal-list');
+    let html = '';
+    let found = false;
+    const days = [];
+    for(let i=0;i<21;i++){
+      const d = new Date();
+      d.setDate(d.getDate()-i);
+      days.push(todayKey(d));
+    }
+    for(const dayKey of days){
+      const e = await storeGet('journal:' + dayKey);
+      if(e){
+        found = true;
+        html += '<div class="entry"><div class="entry-date">' + dayKey + '</div>' +
+                '<div class="entry-mood">Intensidade: ' + e.intensity + '/10</div>' +
+                '<div class="entry-note">' + escapeHtml(e.note) + '</div></div>';
+      }
+    }
+    container.innerHTML = found ? html : '<p class="sub">Ainda não há registros.</p>';
+  }
+  function escapeHtml(s){
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------- Plan tab ----------
+  function renderPlan(){
+    const container = document.getElementById('plan-list');
+    container.innerHTML = '';
+    const currentIdx = currentMonthIndex();
+    PLAN.forEach((m, idx)=>{
+      const block = document.createElement('div');
+      block.className = 'month-block';
+      const itemsHtml = m.items.map(t=>'<li>'+t+'</li>').join('');
+      const noteHtml = m.note ? '<div class="note-box">'+m.note+'</div>' : '';
+      block.innerHTML =
+        '<div class="month-head" data-idx="'+idx+'">' +
+          '<div><span class="m-eyebrow">Mês ' + m.month + (idx===currentIdx ? ' · atual' : '') + '</span>' +
+          '<h3>' + m.phase + '</h3></div>' +
+          '<span class="chev">▾</span>' +
+        '</div>' +
+        '<div class="month-body"><div class="month-body-inner"><ul>' + itemsHtml + '</ul>' + noteHtml + '</div></div>';
+      container.appendChild(block);
+    });
+
+    container.querySelectorAll('.month-head').forEach(head=>{
+      head.addEventListener('click', ()=>{
+        const body = head.nextElementSibling;
+        const chev = head.querySelector('.chev');
+        if(body.style.maxHeight && body.style.maxHeight !== '0px'){
+          body.style.maxHeight = '0px';
+          chev.style.transform = 'rotate(0deg)';
+        } else {
+          body.style.maxHeight = body.scrollHeight + 'px';
+          chev.style.transform = 'rotate(180deg)';
+        }
+      });
+    });
+
+    // auto-open current month
+    const heads = container.querySelectorAll('.month-head');
+    if(heads[currentIdx]) heads[currentIdx].click();
+  }
+
+  // ---------- Progress ----------
+  async function renderProgress(){
+    document.getElementById('stat-month').textContent = PLAN[currentMonthIndex()].month;
+
+    const days = [];
+    for(let i=44;i>=0;i--){
+      const d = new Date();
+      d.setDate(d.getDate()-i);
+      days.push(d);
+    }
+    const heat = document.getElementById('heatmap');
+    heat.innerHTML = '';
+    let activeDays = 0;
+    let streak = 0;
+    let streakBroken = false;
+
+    const results = [];
+    for(const d of days){
+      const key = 'checklist:' + todayKey(d);
+      const state = await storeGet(key);
+      let ratio = 0;
+      if(state){
+        const total = Object.keys(state).length || 1;
+        const done = Object.values(state).filter(Boolean).length;
+        ratio = done/total;
+      }
+      results.push({date:d, ratio});
+    }
+
+    results.forEach(r=>{
+      const cell = document.createElement('div');
+      let cls = 'cell';
+      if(r.ratio > 0.66) cls += ' l3';
+      else if(r.ratio > 0.3) cls += ' l2';
+      else if(r.ratio > 0) cls += ' l1';
+      if(todayKey(r.date) === todayKey()) cls += ' today';
+      cell.className = cls;
+      heat.appendChild(cell);
+      if(r.ratio > 0) activeDays++;
+    });
+
+    for(let i=results.length-1;i>=0;i--){
+      if(results[i].ratio > 0 && !streakBroken){ streak++; }
+      else if(todayKey(results[i].date) !== todayKey()) { streakBroken = true; }
+    }
+
+    document.getElementById('stat-streak').textContent = streak;
+    document.getElementById('stat-days').textContent = activeDays;
+  }
+
+  document.getElementById('reset-start').addEventListener('click', async ()=>{
+    if(!confirm('Isso reinicia a contagem de meses do seu plano a partir de hoje. Continuar?')) return;
+    await storeSet('program:start', todayKey());
+    startDate = todayKey();
+    renderToday();
+    renderPlan();
+    renderProgress();
+  });
+
+  // ---------- Init ----------
+  (async function init(){
+    await ensureStartDate();
+    await renderToday();
+    await renderJournalList();
+    renderPlan();
+    await renderProgress();
+  })();
+
+})();
+</script>
+</body>
+</html>
